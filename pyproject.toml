@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shams-x-chat-bot"
+version = "0.1.0"
+description = "Post Shams Charania's latest X posts into an encrypted X group chat."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "GPL-3.0-only"}
+dependencies = [
+  "chatxdk>=0.4.3,<0.5",
+  "xdk>=0.10.6,<0.11",
+]
+
+[project.scripts]
+shams-bot = "shamsbot.cli:main"
+shams-register-chat = "shamsbot.register:main"
+shams-test-chat = "shamsbot.test_chat:main"
+
+[tool.setuptools.packages.find]
+include = ["shamsbot*"]
