@@ -1,0 +1,5 @@
+[console_scripts]
+shams-bot = shamsbot.cli:main
+shams-oauth-login = shamsbot.oauth_login:main
+shams-register-chat = shamsbot.register:main
+shams-test-chat = shamsbot.test_chat:main

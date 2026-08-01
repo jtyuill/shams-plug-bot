@@ -75,17 +75,31 @@ class XChatSender:
                 blobs.append(item["encoded_event"])
         return list(dict.fromkeys(blobs))
 
-    def _bootstrap_conversation_key(self) -> None:
-        response = self.client.chat.get_conversation_events(
+    def _conversation_event_pages(
+        self, max_pages: int = 10
+    ) -> tuple[list[dict[str, Any]], set[str], list[str]]:
+        pages = self.client.chat.get_conversation_events(
             self.conversation_id.replace(":", "-"), max_results=100
         )
-        page = _as_dict(response)
-        raw_events = page.get("data") or []
-        sender_ids = {
-            str(event["sender_id"])
-            for event in raw_events
-            if event.get("sender_id")
-        }
+        raw_pages: list[dict[str, Any]] = []
+        sender_ids: set[str] = set()
+        blobs: list[str] = []
+        for page in pages:
+            if len(raw_pages) >= max_pages:
+                break
+            raw = _as_dict(page)
+            raw_pages.append(raw)
+            events = raw.get("data") or []
+            sender_ids.update(
+                str(event["sender_id"])
+                for event in events
+                if event.get("sender_id")
+            )
+            blobs.extend(self._event_blobs(raw))
+        return raw_pages, sender_ids, blobs
+
+    def _bootstrap_conversation_key(self) -> None:
+        raw_pages, sender_ids, blobs = self._conversation_event_pages()
         signing_keys: list[dict[str, str]] = []
         for sender_id in sender_ids:
             for key in self._public_keys(sender_id):
@@ -105,7 +119,6 @@ class XChatSender:
                 )
         if signing_keys:
             self.chat.set_signing_keys(signing_keys)
-        blobs = self._event_blobs(page)
         if not blobs:
             raise RuntimeError(
                 "the group has no readable X Chat events; register the bot keys, "

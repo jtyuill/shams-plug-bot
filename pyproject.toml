@@ -18,6 +18,7 @@ dependencies = [
 shams-bot = "shamsbot.cli:main"
 shams-register-chat = "shamsbot.register:main"
 shams-test-chat = "shamsbot.test_chat:main"
+shams-oauth-login = "shamsbot.oauth_login:main"
 
 [tool.setuptools.packages.find]
 include = ["shamsbot*"]
