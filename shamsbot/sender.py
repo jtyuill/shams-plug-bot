@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import base64
 import logging
+import re
 from typing import Any, Protocol
 
 logger = logging.getLogger(__name__)
+POST_URL = re.compile(r"^https://x\.com/[A-Za-z0-9_]{1,15}/status/([0-9]+)$")
 
 
 class Sender(Protocol):
@@ -141,7 +143,22 @@ class XChatSender:
     def send(self, text: str) -> None:
         from xdk.chat.models import SendMessageRequest
 
-        payload = self.chat.encrypt_message(self.conversation_id, text)
+        match = POST_URL.fullmatch(text)
+        payload = self.chat.encrypt_message(
+            self.conversation_id,
+            "" if match else text,
+            attachments=(
+                [
+                    {
+                        "attachment_type": "post",
+                        "rest_id": match.group(1),
+                        "post_url": text,
+                    }
+                ]
+                if match
+                else None
+            ),
+        )
         body = {
             "message_id": payload.message_id,
             "encoded_message_create_event": payload.encrypted_content,
@@ -152,4 +169,3 @@ class XChatSender:
             self.conversation_id.replace(":", "-"), request
         )
         logger.info("xchat_message_sent conversation=%s", self.conversation_id)
-

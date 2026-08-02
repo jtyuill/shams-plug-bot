@@ -26,13 +26,13 @@ class Bot:
         self.source_username = source_username
         self.post_latest_on_start = post_latest_on_start
 
-    def post_url(self, post_id: str) -> str:
-        return f"https://x.com/{self.source_username}/status/{post_id}"
+    def post_url(self, post_id: str, username: str | None = None) -> str:
+        return f"https://x.com/{username or self.source_username}/status/{post_id}"
 
-    def deliver(self, post_id: str) -> bool:
+    def deliver(self, post_id: str, username: str | None = None) -> bool:
         if self.state.contains(post_id):
             return False
-        url = self.post_url(post_id)
+        url = self.post_url(post_id, username)
         self.sender.send(url)
         self.state.mark_delivered(post_id)
         logger.info("post_delivered post_id=%s url=%s", post_id, url)
@@ -44,14 +44,14 @@ class Bot:
         if not self.state.is_initialized():
             if self.post_latest_on_start and posts:
                 self.state.seed([post["id"] for post in posts[:-1]])
-                self.deliver(posts[-1]["id"])
+                self.deliver(posts[-1]["id"], posts[-1].get("username"))
             else:
                 self.state.seed([post["id"] for post in posts])
             self.state.set_initialized()
             logger.info("state_initialized existing_posts=%d", len(posts))
             return
         for post in posts:
-            self.deliver(post["id"])
+            self.deliver(post["id"], post.get("username"))
 
     def run(self) -> None:
         self.stream.ensure_rule()
@@ -61,7 +61,7 @@ class Bot:
                 self.recover()
                 backoff = 1
                 for post in self.stream.events():
-                    self.deliver(str(post["id"]))
+                    self.deliver(str(post["id"]), post.get("username"))
                 raise XApiError("filtered stream closed")
             except KeyboardInterrupt:
                 raise

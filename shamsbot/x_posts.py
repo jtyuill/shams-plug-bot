@@ -84,20 +84,42 @@ class PostStream:
             )
             logger.info("stream_rule_removed tag=%s", self.tag)
 
+    @staticmethod
+    def _with_usernames(result: dict[str, Any]) -> list[dict[str, Any]]:
+        usernames = {
+            str(user["id"]): user["username"]
+            for user in (result.get("includes") or {}).get("users") or []
+            if user.get("id") and user.get("username")
+        }
+        posts = []
+        for post in result.get("data") or []:
+            item = dict(post)
+            username = usernames.get(str(item.get("author_id", "")))
+            if username:
+                item["username"] = username
+            posts.append(item)
+        return posts
+
     def recent(self, max_results: int = 10) -> list[dict[str, Any]]:
         query = urllib.parse.urlencode(
             {
                 "query": self.rule,
                 "max_results": max(10, min(max_results, 100)),
                 "tweet.fields": "author_id,created_at",
+                "expansions": "author_id",
+                "user.fields": "username",
             }
         )
         result = self._request_json("GET", f"/tweets/search/recent?{query}")
-        return list(result.get("data") or [])
+        return self._with_usernames(result)
 
     def events(self) -> Iterator[dict[str, Any]]:
         query = urllib.parse.urlencode(
-            {"tweet.fields": "author_id,created_at"}
+            {
+                "tweet.fields": "author_id,created_at",
+                "expansions": "author_id",
+                "user.fields": "username",
+            }
         )
         request = urllib.request.Request(
             f"{API_BASE}/tweets/search/stream?{query}",
@@ -120,6 +142,8 @@ class PostStream:
                     ):
                         continue
                     if event.get("data", {}).get("id"):
-                        yield event["data"]
+                        posts = self._with_usernames(event)
+                        if posts:
+                            yield posts[0]
         except (urllib.error.URLError, socket.timeout, json.JSONDecodeError) as error:
             raise XApiError(f"filtered stream disconnected: {error}") from error

@@ -49,6 +49,14 @@ class BotTests(unittest.TestCase):
             ["https://x.com/ShamsCharania/status/123"],
         )
 
+    def test_delivers_using_event_author(self) -> None:
+        self.assertTrue(self.bot.deliver("456", "memgrizz"))
+
+        self.assertEqual(
+            self.sender.messages,
+            ["https://x.com/memgrizz/status/456"],
+        )
+
     def test_first_start_seeds_history_without_spam(self) -> None:
         self.stream.posts = [
             {"id": "1", "created_at": "2026-01-01T00:00:00Z"},
@@ -95,4 +103,3 @@ class BotTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
