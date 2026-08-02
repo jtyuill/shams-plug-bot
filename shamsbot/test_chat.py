@@ -38,7 +38,7 @@ def _sender() -> XChatSender:
 
 def send_immediate(sender: XChatSender) -> None:
     timestamp = datetime.now(timezone.utc).isoformat(timespec="seconds")
-    sender.send(f"✅ X Chat bot smoke test — {timestamp}")
+    sender.send(f"Test {timestamp}")
     print("Immediate encrypted test message sent.")
 
 

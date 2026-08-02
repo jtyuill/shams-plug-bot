@@ -1,0 +1,15 @@
+[Unit]
+Description=Four-account X Chat post bot
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=/home/jacob/shams
+ExecStart=/home/jacob/shams/.venv/bin/shams-bot
+Restart=always
+RestartSec=10
+Environment=PYTHONUNBUFFERED=1
+
+[Install]
+WantedBy=default.target

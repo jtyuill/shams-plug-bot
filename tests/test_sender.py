@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from shamsbot.sender import POST_URL, XChatSender
 
@@ -36,7 +37,8 @@ class SenderTests(unittest.TestCase):
     def test_sends_post_as_attachment(self) -> None:
         url = "https://x.com/ShamsCharania/status/123"
 
-        self.sender.send(url)
+        with patch("shamsbot.sender.load_oauth_access_token", return_value=None):
+            self.sender.send(url)
 
         self.assertEqual(
             self.sender.chat.calls,
@@ -56,7 +58,8 @@ class SenderTests(unittest.TestCase):
         )
 
     def test_sends_regular_text_without_attachment(self) -> None:
-        self.sender.send("smoke test")
+        with patch("shamsbot.sender.load_oauth_access_token", return_value=None):
+            self.sender.send("smoke test")
 
         self.assertEqual(self.sender.chat.calls, [("g123", "smoke test", None)])
 

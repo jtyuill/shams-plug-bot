@@ -5,6 +5,8 @@ import logging
 import re
 from typing import Any, Protocol
 
+from .config import load_oauth_access_token
+
 logger = logging.getLogger(__name__)
 POST_URL = re.compile(r"^https://x\.com/[A-Za-z0-9_]{1,15}/status/([0-9]+)$")
 
@@ -143,6 +145,9 @@ class XChatSender:
     def send(self, text: str) -> None:
         from xdk.chat.models import SendMessageRequest
 
+        access_token = load_oauth_access_token()
+        if access_token:
+            self.client.access_token = access_token
         match = POST_URL.fullmatch(text)
         payload = self.chat.encrypt_message(
             self.conversation_id,

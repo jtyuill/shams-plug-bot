@@ -3,7 +3,7 @@ from __future__ import annotations
 import logging
 import sys
 
-from .config import Config, load_dotenv
+from .config import Config, load_dotenv, load_oauth_access_token
 from .sender import DryRunSender, XChatSender
 from .service import Bot
 from .state import State
@@ -13,6 +13,7 @@ from .x_posts import PostStream
 def main() -> None:
     load_dotenv()
     try:
+        load_oauth_access_token()
         config = Config.from_env()
     except ValueError as error:
         print(f"configuration error: {error}", file=sys.stderr)
@@ -51,4 +52,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-
