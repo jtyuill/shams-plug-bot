@@ -18,13 +18,11 @@ class Bot:
         sender: Sender,
         state: State,
         source_username: str,
-        post_latest_on_start: bool = False,
     ) -> None:
         self.stream = stream
         self.sender = sender
         self.state = state
         self.source_username = source_username
-        self.post_latest_on_start = post_latest_on_start
 
     def post_url(self, post_id: str, username: str | None = None) -> str:
         return f"https://x.com/{username or self.source_username}/status/{post_id}"
@@ -38,15 +36,12 @@ class Bot:
         logger.info("post_delivered post_id=%s url=%s", post_id, url)
         return True
 
-    def recover(self) -> None:
+    def recover_recent(self) -> None:
+        """Explicitly deliver recent matching posts that are not in local state."""
         posts = self.stream.recent(max_results=10)
         posts.sort(key=lambda post: (post.get("created_at", ""), post["id"]))
         if not self.state.is_initialized():
-            if self.post_latest_on_start and posts:
-                self.state.seed([post["id"] for post in posts[:-1]])
-                self.deliver(posts[-1]["id"], posts[-1].get("username"))
-            else:
-                self.state.seed([post["id"] for post in posts])
+            self.state.seed([post["id"] for post in posts])
             self.state.set_initialized()
             logger.info("state_initialized existing_posts=%d", len(posts))
             return
@@ -58,7 +53,6 @@ class Bot:
         backoff = 1
         while True:
             try:
-                self.recover()
                 backoff = 1
                 for post in self.stream.events():
                     self.deliver(str(post["id"]), post.get("username"))

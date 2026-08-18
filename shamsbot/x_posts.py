@@ -91,8 +91,13 @@ class PostStream:
             for user in (result.get("includes") or {}).get("users") or []
             if user.get("id") and user.get("username")
         }
+        raw_posts = result.get("data") or []
+        # Search responses contain a list, while filtered-stream events contain
+        # one Post object. Normalize both shapes before adding usernames.
+        if isinstance(raw_posts, dict):
+            raw_posts = [raw_posts]
         posts = []
-        for post in result.get("data") or []:
+        for post in raw_posts:
             item = dict(post)
             username = usernames.get(str(item.get("author_id", "")))
             if username:

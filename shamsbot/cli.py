@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import sys
+from argparse import ArgumentParser
 
 from .config import Config, load_dotenv, load_oauth_access_token
 from .sender import DryRunSender, XChatSender
@@ -11,6 +12,13 @@ from .x_posts import PostStream
 
 
 def main() -> None:
+    parser = ArgumentParser(description="Send matching X posts to an X Chat group.")
+    parser.add_argument(
+        "--recover-recent",
+        action="store_true",
+        help="debug: deliver unrecorded matching posts from the recent-search window, then exit",
+    )
+    args = parser.parse_args()
     load_dotenv()
     try:
         load_oauth_access_token()
@@ -42,10 +50,15 @@ def main() -> None:
         sender=sender,
         state=state,
         source_username=config.source_username,
-        post_latest_on_start=config.post_latest_on_start,
     )
     try:
-        bot.run()
+        if args.recover_recent:
+            logging.warning(
+                "manual_recent_recovery_started; this may send up to 10 unrecorded posts"
+            )
+            bot.recover_recent()
+        else:
+            bot.run()
     finally:
         state.close()
 

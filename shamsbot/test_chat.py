@@ -10,7 +10,7 @@ import threading
 from datetime import datetime, timezone
 from typing import Any
 
-from .config import load_dotenv
+from .config import load_dotenv, load_oauth_access_token
 from .sender import XChatSender
 from .x_posts import PostStream
 
@@ -99,6 +99,7 @@ def wait_for_post(
 
 def main() -> None:
     load_dotenv()
+    load_oauth_access_token()
     parser = argparse.ArgumentParser(
         description="Verify encrypted X Chat delivery immediately or end-to-end."
     )

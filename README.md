@@ -1,22 +1,21 @@
 # Shams → X Chat bot
 
-A proof of concept that listens for new posts from
-[@ShamsCharania](https://x.com/ShamsCharania) and immediately sends the
-canonical post link into an encrypted X group chat.
+A proof of concept that listens for new posts from five configured NBA news
+accounts—`@ShamsCharania`, `@ChrisBHaynes`, `@memgrizz`, `@GrizzliesPR`, and
+`@TheSteinLine`—and immediately sends the canonical post link into an encrypted
+X group chat.
 
 It uses X's filtered stream rather than polling. SQLite deduplication prevents
-normal reconnects and restarts from posting the same link twice, while a recent
-search catches posts published during a disconnection.
+normal reconnects and restarts from posting the same link twice.
 
 ## What is implemented
 
-- Creates the filtered-stream rule `from:ShamsCharania -is:retweet`.
+- Creates a filtered-stream rule for the five configured accounts, excluding reposts.
 - Receives new matching posts over one persistent connection.
-- Sends `https://x.com/ShamsCharania/status/{id}`.
+- Sends the canonical `https://x.com/{username}/status/{id}` link.
 - Defaults to dry-run logging, so setup cannot accidentally message a group.
 - Persists delivered post IDs in `state/bot.sqlite3`.
-- Seeds existing posts without sending them on the first run.
-- Recovers missed posts after later restarts/reconnections.
+- Does not backfill posts on startup or reconnect.
 - Registers the bot's X Chat identity and stores its private blob with mode 600.
 - Loads the group's current conversation key from encrypted X Chat history.
 
@@ -58,10 +57,17 @@ Put the app-only token in `X_BEARER_TOKEN`. Leave `CHAT_DRY_RUN=true`, then:
 shams-bot
 ```
 
-On first run the bot creates its stream rule, records the current recent posts
-as already seen, then logs future links without sending them. Set
-`POST_LATEST_ON_START=true` if the first run should emit the newest existing
-post as well.
+On first run the bot creates its stream rule and then logs future links without
+sending any existing posts.
+
+To deliberately recover recent matching posts (for debugging only), run:
+
+```bash
+shams-bot --recover-recent
+```
+
+This may send up to ten unrecorded posts to the configured chat, so do not use
+it for normal restarts or reconnects.
 
 ## 2. Provision encrypted X Chat
 
@@ -130,10 +136,11 @@ The SQLite database and the registration blob must live on persistent storage.
 
 ## Cost controls and behavior
 
-The rule only matches Shams's posts, so a stream event should cost one Post read.
-Each live link is one X Chat/DM write. Recent-search recovery returns up to ten
-resources and can add small read charges after reconnects. Configure a spending
-limit in the X Developer Console.
+The rule only matches the configured accounts' posts, so a stream event should
+cost one Post read.
+Each live link is one X Chat/DM write. The optional manual recent recovery
+returns up to ten resources and can add small read charges. Configure a
+spending limit in the X Developer Console.
 
 Delivery is at-least-once around ambiguous network failures: the database is
 marked only after the send call succeeds. That avoids silently dropping a post,

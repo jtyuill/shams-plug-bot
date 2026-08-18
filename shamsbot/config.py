@@ -92,7 +92,6 @@ class Config:
     private_keys_b64: str | None = None
     signing_key_version: str = "1"
     state_db: Path = Path("state/bot.sqlite3")
-    post_latest_on_start: bool = False
     log_level: str = "INFO"
 
     @classmethod
@@ -120,7 +119,6 @@ class Config:
                 "CHAT_SIGNING_KEY_VERSION", "1"
             ).strip(),
             state_db=Path(os.environ.get("STATE_DB", "state/bot.sqlite3")),
-            post_latest_on_start=_bool("POST_LATEST_ON_START", False),
             log_level=os.environ.get("LOG_LEVEL", "INFO").upper(),
         )
         if not config.stream_rule or not config.stream_rule_tag:
