@@ -1,8 +1,8 @@
 # Shams → X Chat bot
 
-A proof of concept that listens for new posts from five configured NBA news
-accounts—`@ShamsCharania`, `@ChrisBHaynes`, `@memgrizz`, `@GrizzliesPR`, and
-`@TheSteinLine`—and immediately sends the canonical post link into an encrypted
+A proof of concept that listens for new posts from four configured NBA news
+accounts—`@ShamsCharania`, `@ChrisBHaynes`, `@memgrizz`, and `@GrizzliesPR`—and
+immediately sends the canonical post link into an encrypted
 X group chat.
 
 It uses X's filtered stream rather than polling. SQLite deduplication prevents

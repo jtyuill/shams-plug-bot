@@ -1,5 +1,5 @@
 [Unit]
-Description=Five-account X Chat post bot
+Description=Four-account X Chat post bot
 Wants=network-online.target
 After=network-online.target
 
