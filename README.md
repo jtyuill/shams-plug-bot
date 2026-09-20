@@ -134,6 +134,39 @@ docker run --env-file .env -v "$PWD/state:/data" shams-x-chat-bot
 
 The SQLite database and the registration blob must live on persistent storage.
 
+## Shams news filtering (Jev)
+
+Set `OPENCODE_API_KEY` in `.env` to an OpenCode Zen API key. The bot calls
+`https://opencode.ai/zen/v1/systemone` directly with `jev-1.13`; it does not
+require Oh My Pi, a chat-completions API, or any additional Python package.
+Keep `.env` private (`chmod 600 .env`).
+
+Only `ShamsCharania` posts are filtered; the other configured accounts retain
+their existing behavior. Jev independently judges concrete basketball news and
+redundancy against up to 40 delivered Shams posts from the last 48 hours
+(bounded to 48,000 characters). Delivery requires news probability >= 0.85
+and redundancy probability <= 0.20. This deliberately favors fewer messages
+over borderline updates; model judgments are not guarantees.
+
+Signings, trades, injuries, availability, coaching changes, and material new
+details qualify. Agent-attributed reporting is news; agent thank-yous,
+congratulations, standalone article/TV promotion, and repeated stories do not.
+Article links are not automatically banned when the tweet reports new facts.
+The classifier sees tweet text, not linked articles or media.
+
+Missing/oversized text, API errors, invalid responses, and uncertain decisions
+are suppressed and recorded locally, including across restarts. API outages
+therefore lose Shams updates rather than forwarding unfiltered posts or building
+a backlog. The timeout is 15 seconds, with no automatic classification retries.
+`news_decisions` in the existing SQLite state database stores text, decisions,
+and probabilities; only successfully delivered posts become duplicate context.
+Existing delivered IDs remain untouched. Older installations initially have no
+text context for their previous deliveries unless it is explicitly populated.
+
+Normal startup still never recovers old tweets. For offline checks use
+`python -m unittest discover -s tests -v`; those tests do not send chat messages.
+Do not use `shams-test-chat` or `--recover-recent` to test this filter in a real group.
+
 ## Cost controls and behavior
 
 The rule only matches the configured accounts' posts, so a stream event should

@@ -3,6 +3,9 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from unittest.mock import Mock
+
+from shamsbot.news_filter import Decision
 
 from shamsbot.service import Bot
 from shamsbot.state import State
@@ -39,11 +42,14 @@ class BotTests(unittest.TestCase):
         self.state = State(Path(self.temp.name) / "state.sqlite3")
         self.sender = FakeSender()
         self.stream = FakeStream()
+        self.news_filter = Mock()
+        self.news_filter.judge.return_value = Decision(True, "news", 0.99, 0.01)
         self.bot = Bot(
             stream=self.stream,  # type: ignore[arg-type]
             sender=self.sender,
             state=self.state,
             source_username="ShamsCharania",
+            news_filter=self.news_filter,
         )
 
     def tearDown(self) -> None:
@@ -51,15 +57,16 @@ class BotTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_delivers_canonical_link_only_once(self) -> None:
-        self.assertTrue(self.bot.deliver("123"))
-        self.assertFalse(self.bot.deliver("123"))
+        self.assertTrue(self.bot.deliver({"id": "123", "text": "A new signing"}))
+        self.assertFalse(self.bot.deliver({"id": "123", "text": "A new signing"}))
         self.assertEqual(
             self.sender.messages,
             ["https://x.com/ShamsCharania/status/123"],
         )
 
     def test_delivers_using_event_author(self) -> None:
-        self.assertTrue(self.bot.deliver("456", "memgrizz"))
+        self.news_filter.judge.side_effect = AssertionError("Other accounts must not be filtered")
+        self.assertTrue(self.bot.deliver({"id": "456", "username": "memgrizz"}))
 
         self.assertEqual(
             self.sender.messages,
@@ -102,6 +109,39 @@ class BotTests(unittest.TestCase):
                 "https://x.com/ShamsCharania/status/2",
             ],
         )
+
+    def test_rejected_post_stays_suppressed_after_restart(self) -> None:
+        self.news_filter.judge.return_value = Decision(False, "noise_or_uncertain", 0.1, 0.9)
+        post = {"id": "noise", "text": "Thanks to the agents"}
+        self.assertFalse(self.bot.deliver(post))
+        self.state.close()
+        self.state = State(Path(self.temp.name) / "state.sqlite3")
+        self.bot.state = self.state
+        self.news_filter.judge.return_value = Decision(True, "news", 0.99, 0.01)
+        self.assertFalse(self.bot.deliver(post))
+        self.assertEqual(self.sender.messages, [])
+
+    def test_filter_failure_cannot_send_or_replay(self) -> None:
+        self.news_filter.judge.side_effect = TimeoutError()
+        self.assertFalse(self.bot.deliver({"id": "timeout", "text": "A signing"}))
+        self.news_filter.judge.side_effect = None
+        self.assertFalse(self.bot.deliver({"id": "timeout", "text": "A signing"}))
+        self.assertEqual(self.sender.messages, [])
+
+    def test_only_delivered_news_enters_persistent_duplicate_context(self) -> None:
+        self.bot.deliver({"id": "news", "text": "A new signing"})
+        self.news_filter.judge.return_value = Decision(False, "noise_or_uncertain")
+        self.bot.deliver({"id": "noise", "text": "Thanks to agents"})
+        self.state.close()
+        self.state = State(Path(self.temp.name) / "state.sqlite3")
+        self.assertEqual(self.state.recent_news(), ["A new signing"])
+
+    def test_failed_send_does_not_make_news_its_own_duplicate(self) -> None:
+        self.sender.send = Mock(side_effect=RuntimeError("send failed"))
+        with self.assertRaises(RuntimeError):
+            self.bot.deliver({"id": "failed", "text": "A new signing"})
+        self.assertEqual(self.state.recent_news(), [])
+        self.assertFalse(self.state.contains("failed"))
 
 if __name__ == "__main__":
     unittest.main()

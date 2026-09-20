@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import logging
+import os
 import sys
 from argparse import ArgumentParser
 
 from .config import Config, load_dotenv, load_oauth_access_token
+from .news_filter import NewsFilter
 from .sender import DryRunSender, XChatSender
 from .service import Bot
 from .state import State
@@ -23,6 +25,7 @@ def main() -> None:
     try:
         load_oauth_access_token()
         config = Config.from_env()
+        news_filter = NewsFilter(os.environ.get("OPENCODE_API_KEY", ""))
     except ValueError as error:
         print(f"configuration error: {error}", file=sys.stderr)
         raise SystemExit(2) from error
@@ -50,6 +53,7 @@ def main() -> None:
         sender=sender,
         state=state,
         source_username=config.source_username,
+        news_filter=news_filter,
     )
     try:
         if args.recover_recent:
